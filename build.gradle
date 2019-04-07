@@ -1,6 +1,6 @@
 buildscript {
     ext.versions = [
-            'jvm': '11'
+            'jvm': '1.8'
            ,'kotlin': '1.3.21'
     ]
     repositories { jcenter() }

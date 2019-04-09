@@ -11,10 +11,8 @@ open class GatewayImpl(
 ): AbstractGateway(endpoint){
     private val sendQueue   = LinkedBlockingDeque<String>()
 
-    init {
-        run()
-        thread { sendQueue.offer(readLine()) }
-    }
+    init { thread { sendQueue.offer(readLine()) } }
+
     override fun packetDispatcher() {
         val payloads = sendQueue.take()
         webSocket.sendText(payloads, true)

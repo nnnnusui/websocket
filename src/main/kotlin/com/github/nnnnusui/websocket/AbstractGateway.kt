@@ -1,28 +1,34 @@
 package com.github.nnnnusui.websocket
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.WebSocket
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 
 abstract class AbstractGateway(
-      endpoint:        URI
+  val endpoint:        URI
  ,val completionStage: CompletionStage<*>? = null
-): WebSocket.Listener {
+): CoroutineScope, WebSocket.Listener {
+    override val coroutineContext = Dispatchers.Default
     protected val buffer      = StringBuffer()
     var alive = true
 
-    protected val websocketFuture = HttpClient
-                                   .newHttpClient()
-                                   .newWebSocketBuilder()
-                                   .buildAsync(endpoint, this)
-    lateinit protected var webSocket: WebSocket
-    fun connect() { webSocket = websocketFuture.join() }
+    lateinit protected var websocketFuture: CompletableFuture<WebSocket>
+    lateinit protected var webSocket:       WebSocket
+    protected fun connect() { webSocket = websocketFuture.join() }
 
-    fun run(){
+    fun run(listener: WebSocket.Listener = this){
+        check(!this::websocketFuture.isInitialized) { "${this}: Already running." }
+        websocketFuture = HttpClient
+                         .newHttpClient()
+                         .newWebSocketBuilder()
+                         .buildAsync(endpoint, listener)
         connect()
-        Thread({ while (alive) packetDispatcher() }
-              ,"Gateway Packet Dispatcher"  ).start()
+        launch{ while (alive) packetDispatcher() }
     }
     abstract protected fun packetDispatcher()
 

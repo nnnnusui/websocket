@@ -6,7 +6,6 @@ import kotlinx.coroutines.launch
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.WebSocket
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 
 abstract class AbstractGateway(
@@ -17,16 +16,18 @@ abstract class AbstractGateway(
     protected val buffer      = StringBuffer()
     var alive = true
 
-    lateinit protected var websocketFuture: CompletableFuture<WebSocket>
+    lateinit protected var websocketListener: WebSocket.Listener
     lateinit protected var webSocket:       WebSocket
-    protected fun connect() { webSocket = websocketFuture.join() }
+    val websocketBuilder =  HttpClient
+                           .newHttpClient()
+                           .newWebSocketBuilder()
+    protected fun connect() { webSocket = websocketBuilder
+                                         .buildAsync(endpoint, websocketListener)
+                                         .join() }
 
     fun run(listener: WebSocket.Listener = this){
-        check(!this::websocketFuture.isInitialized) { "${this}: Already running." }
-        websocketFuture = HttpClient
-                         .newHttpClient()
-                         .newWebSocketBuilder()
-                         .buildAsync(endpoint, listener)
+        check(!this::websocketListener.isInitialized) { "${this}: Already running." }
+        websocketListener = listener
         connect()
         launch{ while (alive) packetDispatcher() }
     }
